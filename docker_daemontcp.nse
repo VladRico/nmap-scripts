@@ -1,4 +1,5 @@
 -- HEAD --
+-- Credit : https://www.exploit-db.com/exploits/42650
 description = [[ Utilizing Docker via unprotected tcp socket (2375/tcp, maybe 2376/tcp), an attacker can create a Docker container with the '/' path mounted with read/write permissions on the host server that is running the Docker container. As the Docker container executes command as uid 0 it is honored by the host operating system allowing the attacker to edit/create files owned by root. This exploit abuses this to creates a cron job in the '/etc/cron.d/' path of the host server. The Docker image should exist on the target system or be a valid image from hub.docker.com.]]
 
 author = "Vlad Rico"
