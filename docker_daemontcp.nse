@@ -12,20 +12,73 @@ local string = require "string"
 local comm = require "comm"
 local json = require "json"
 
+-- Try to patch raw data in correct json
+local function jsonMonkeyPatch(data)
+	local ok_json,res_json, tmp
+	ok_json = false
+
+	--> Need: "}]
+	if(not(ok_json)) then
+	tmp = data .. "DATA OMITTED\"}]"
+	ok_json, res_json = json.parse(tmp)
+	end
+
+	--> Need: "]}]
+	if(not(ok_json)) then
+	tmp = data .. "DATA OMITTED\"]}]"
+	ok_json, res_json = json.parse(tmp)
+  	end
+
+	--> Need: ":""}}}}] 
+	if(not(ok_json)) then
+	tmp = data .. "DATA OMITTED\":\"\"}}}}]"
+	ok_json, res_json = json.parse(tmp)
+	end
+	
+	-- Need: ":""}}]
+	if(not(ok_json)) then
+	tmp = data .. "DATA OMITTED\":\"\"}}]"
+	ok_json, res_json = json.parse(tmp)
+	end	
+  	if(ok_json)then data = res_json end
+	return data
+end
+
+--To parse raw response from SSL socket
 local function parseSSLResult(result)
   local newres ={ header = {}, body="" }
+  local ok_json, res_json
+  local tmp
+
+  -- Match the headers
   local headerString = result:match("[%g ]+\r\n([%g \r\n]+)\r\n\r\n") .. "\r\n"
   if headerString == nil then error("Couldn't find header") end
+
+  -- Remove headers from initial result to keep only the body
+  newres['body'] = result:gsub("[%g ]+" .. "\r\n", "")
   for k, v in headerString:gmatch("([%a%d%-]+): ([%g ]+)\r\n") do
 	  if k == nil then error("Unparseable Header") end
 	  newres['header'][k] = v
-	  newres['body'] = result.gsub(result,newres['header'][k], "")
-	  print(result.gsub(result,newres['header'][k], ""))
   end
-  --newres['body'] = json.parse(result)
+
+  --Parsing body only with '-v' option
+  if(nmap.verbosity() > 1) then
+	  -- Try to parse body into json
+	  ok_json, res_json = json.parse(newres['body'])
+	  print(ok_json)
+	  -- When there is too much data, nmap omits the end of the json data, so ... monkey patch
+	  if(not(ok_json))then
+	    newres['body'] = jsonMonkeyPatch(newres['body'])
+	  else
+	    newres['body'] = res_json
+	  end
+	  
+  else
+  	  newres['body'] = 'Enable verbose to see the output'
+  end
   return newres
 end
-
+ 
 -- RULE --
 portrule = shortport.port_or_service({2375, 2376}, {"docker", "docker-s"}, "tcp")
 
@@ -68,8 +121,6 @@ action = function(host,port)
   end
   result = parseSSLResult(result)
   if(string.match(result['header']['Server'],'Docker')) then
-  --if(string.match(result,'Docker')) then
-    local newres
     port.version.name = 'docker'
     port.version.product = "Docker"
     port.version.extrainfo = "Target may be vulnerable to Docker API RCE via TCP socket unprotected"
