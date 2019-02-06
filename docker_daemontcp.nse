@@ -40,6 +40,7 @@ local function jsonMonkeyPatch(data)
 	tmp = data .. "DATA OMITTED\":\"\"}}]"
 	ok_json, res_json = json.parse(tmp)
 	end	
+
   	if(ok_json)then data = res_json end
 	return data
 end
@@ -54,7 +55,7 @@ local function parseSSLResult(result)
   local headerString = result:match("[%g ]+\r\n([%g \r\n]+)\r\n\r\n") .. "\r\n"
   if headerString == nil then error("Couldn't find header") end
 
-  -- Remove headers from initial result to keep only the body
+  -- Remove headers from initial result to only keep the body
   newres['body'] = result:gsub("[%g ]+" .. "\r\n", "")
   for k, v in headerString:gmatch("([%a%d%-]+): ([%g ]+)\r\n") do
 	  if k == nil then error("Unparseable Header") end
@@ -65,7 +66,6 @@ local function parseSSLResult(result)
   if(nmap.verbosity() > 1) then
 	  -- Try to parse body into json
 	  ok_json, res_json = json.parse(newres['body'])
-	  print(ok_json)
 	  -- When there is too much data, nmap omits the end of the json data, so ... monkey patch
 	  if(not(ok_json))then
 	    newres['body'] = jsonMonkeyPatch(newres['body'])
