@@ -1,17 +1,28 @@
 -- HEAD --
 -- Ref: https://www.exploit-db.com/exploits/42650
-description = [[ Utilizing Docker via unprotected tcp socket (2375/tcp, maybe 2376/tcp), an attacker can create a Docker container with the '/' path mounted with read/write permissions on the host server that is running the Docker container. As the Docker container executes command as uid 0 it is honored by the host operating system allowing the attacker to edit/create files owned by root. This exploit abuses this to creates a cron job in the '/etc/cron.d/' path of the host server. The Docker image should exist on the target system or be a valid image from hub.docker.com.]]
+description = [[ 
+		Utilizing Docker via unprotected tcp socket (2375/tcp, maybe 2376/tcp),	an attacker can create a Docker container with the '/' path mounted with read/write permissions on the host server that is running the Docker container. 
+		As the Docker container executes command as uid 0 it is honored by the host operating system allowing the attacker to edit/create files owned by root. 
+		This exploit abuses this to creates a cron job in the '/etc/cron.d/' path of the host server. 
+		The Docker image should exist on the target system or be a valid image from hub.docker.com.
+		]]
 
 author = "Vlad Rico"
 categories = {"discovery", "safe", "version"}
 license = "Same as Nmap--See https://nmap.org/book/man-legal.html"
+dependencies = {"docker-version"}
 
 local shortport = require "shortport"
 local http = require "http"
 local string = require "string"
 local comm = require "comm"
 local json = require "json"
+local nmap = require "nmap"
 
+-- RULE --
+portrule = shortport.port_or_service({2375, 2376}, {"docker", "docker-s"}, "tcp")
+
+-- FUNCTIONS --
 -- Try to patch raw data in correct json
 local function jsonMonkeyPatch(data)
 	local ok_json,res_json, tmp
@@ -78,9 +89,6 @@ local function parseSSLResult(result)
   end
   return newres
 end
- 
--- RULE --
-portrule = shortport.port_or_service({2375, 2376}, {"docker", "docker-s"}, "tcp")
 
 -- ACTION --
 action = function(host,port)
@@ -104,8 +112,6 @@ action = function(host,port)
     return "GET request didn't return a proper header. Maybe the server uses SSL on this port"
   end 
   if(result.header['server'] and string.match(result.header['server'], 'Docker')) then
-    port.version.name = 'docker'
-    port.version.product = "Docker"
     port.version.extrainfo = "Target may be vulnerable to Docker API RCE via TCP socket unprotected"
     nmap.set_port_version(host, port)
     return result
@@ -121,14 +127,13 @@ action = function(host,port)
   end
   result = parseSSLResult(result)
   if(string.match(result['header']['Server'],'Docker')) then
-    port.version.name = 'docker'
-    port.version.product = "Docker"
     port.version.extrainfo = "Target may be vulnerable to Docker API RCE via TCP socket unprotected"
     nmap.set_port_version(host, port)
     
     return result
   end
   nmap.port.version.extrainfo = 'Target not vulnerable'
-  return 'Target not vulnerable'
+  nmap.set_port_version(host,port)
+  return 
 end
 
