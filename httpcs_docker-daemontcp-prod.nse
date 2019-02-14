@@ -5,13 +5,16 @@ Utilizing Docker via unprotected tcp socket (2375/tcp, maybe 2376/tcp),	an attac
 As the Docker container executes command as uid 0 it is honored by the host operating system allowing the attacker to edit/create files owned by root. 
 This exploit abuses this to creates a cron job in the '/etc/cron.d/' path of the host server. 
 The Docker image should exist on the target system or be a valid image from hub.docker.com.
+
+-- USE IT WITH -A
+-- TO RUN AUTOMATICALLY, UPDATE DB : nmap --script-updatedb
 		]]
 -------------------------------------------------
 ----------- USE IT WHITH -A option --------------
 -------------------------------------------------
 
 author = "Vlad Rico"
-categories = {"discovery", "safe", "version"}
+categories = {"default","discovery", "safe", "version"}
 license = "Same as Nmap--See https://nmap.org/book/man-legal.html"
 dependencies = {"docker-version"}
 
